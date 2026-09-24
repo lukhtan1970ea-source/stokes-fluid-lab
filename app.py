@@ -60,11 +60,13 @@ else:
     v_term = (2 / 9) * (r**2) * g * (rho_s - rho_f) / eta
     tau = m / (6 * np.pi * eta * r)
 
-    # Враховуємо радіус кульки для зупинки: фізичний шлях до торкання дна нижнім краєм
-    # Радіус кульки в пікселях = 12. Висота циліндра в пікселях = 400.
-    # Масштаб: scale = 400 / H_cylinder. Радіус в метрах на екрані: r_screen_m = 12 / scale
+    # Динамічний радіус кульки на екрані (в пікселях) підв'язуємо до повзунка
+    # Робимо базовий радіус помітним, наприклад: 5 мм = 15 пікселів, 1 мм = 5 пікселів
+    r_pixels = float(r_mm * 3.0)
+    
+    # Визначаємо фізичну точку зупинки центру мас кульки з урахуванням її поточного радіуса на екрані
     scale_factor = 400 / H_cylinder
-    r_screen_m = 12 / scale_factor
+    r_screen_m = r_pixels / scale_factor
     H_stop_m = H_cylinder - r_screen_m  # точка зупинки центру мас кульки
 
     # Функція розрахунку часу падіння до потрібної позначки
@@ -74,7 +76,7 @@ else:
         idx = np.searchsorted(y_arr, y_target)
         return t_arr[idx] if idx < len(t_arr) else 180.0
 
-    # Точний час падіння саме до торкання дна нижнім краєм
+    # Точний час падіння до торкання дна нижнім краєм (динамічно залежить від радіуса)
     t_bottom = get_time_for_distance(H_stop_m, v_term, tau)
 
     # --- Інтерфейс лабораторного стенду ---
@@ -132,19 +134,19 @@ else:
         <button id="btn" onclick="startSimulation()">🚀 Скинути кульку</button>
 
         <svg width="250" height="440" viewBox="0 0 250 440" xmlns="http://w3.org">
-            <!-- Рідина в циліндрі -->
+            <!-- Рідина в циліндрі (задній план) -->
             <rect x="85" y="20" width="80" height="400" fill="rgba(0, 150, 255, 0.15)" stroke="#ffffff" stroke-width="3" rx="5" />
             
-            <!-- Мітка А -->
+            <!-- Кулька (середній план, малюється під мітками) -->
+            <circle id="ball" cx="125" y="20" r="{r_pixels}" fill="#a0a0a0" stroke="#ffffff" stroke-width="2" />
+            
+            <!-- Мітка А (передній план - перенесено вниз, перекриває кульку) -->
             <line x1="65" y1="{20 + (y_start_label * 400 / H_cylinder)}" x2="185" y2="{20 + (y_start_label * 400 / H_cylinder)}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
-            <text x="5" y="{25 + (y_start_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold">Мітка А</text>
+            <text x="5" y="{25 + (y_start_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold" font-family="sans-serif">Мітка А</text>
             
-            <!-- Мітка Б -->
+            <!-- Мітка Б (передній план - перенесено вниз, перекриває кульку) -->
             <line x1="65" y1="{20 + (y_end_label * 400 / H_cylinder)}" x2="185" y2="{20 + (y_end_label * 400 / H_cylinder)}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
-            <text x="5" y="{25 + (y_end_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold">Мітка Б</text>
-            
-            <!-- Кулька (радіус 12 пікселів) -->
-            <circle id="ball" cx="125" y="20" r="12" fill="#a0a0a0" stroke="#ffffff" stroke-width="2" />
+            <text x="5" y="{25 + (y_end_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold" font-family="sans-serif">Мітка Б</text>
         </svg>
 
         <script>
@@ -175,20 +177,15 @@ else:
 
                 if (elapsed_seconds >= t_bottom) {{
                     elapsed_seconds = t_bottom;
-                    // Фіксуємо центр кульки точно в точці зупинки (420 мінус радіус 12 = 408)
                     document.getElementById('ball').setAttribute('cy', 20 + H_stop_m * scale);
                     document.getElementById('stopwatch').innerText = "⏱️ Разом: " + elapsed_seconds.toFixed(3) + " с";
                     document.getElementById('stopwatch').style.color = "#00FFCC";
                     return;
                 }}
 
-                // Розрахунок поточної координати центру кульки
                 let y_curr = v_term * elapsed_seconds - v_term * tau * (1 - Math.exp(-elapsed_seconds / tau));
-                
-                // Якщо центр мас опустився нижче точки торкання дна
                 if (y_curr > H_stop_m) y_curr = H_stop_m;
 
-                // Оновлюємо позицію та секундомір
                 document.getElementById('ball').setAttribute('cy', 20 + y_curr * scale);
                 document.getElementById('stopwatch').innerText = "⏱️ Секундомір: " + elapsed_seconds.toFixed(3) + " с";
 
