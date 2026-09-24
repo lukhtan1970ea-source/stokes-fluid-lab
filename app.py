@@ -211,7 +211,7 @@ else:
     </html>
     """
     
-    components.html(html_src, height=800)
+    components.html(html_src, height=720)
 
 
     # Таблиця констант
