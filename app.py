@@ -1,4 +1,3 @@
-import time
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -57,7 +56,7 @@ if rho_s <= rho_f:
         "❌ Помилка: Густина кульки менша або дорівнює густині рідини! Кулька не буде тонути. Змініть матеріал або рідину."
     )
 else:
-    # Розрахунок руху
+    # Розрахунок руху для передачі в JavaScript
     v_term = (2 / 9) * (r**2) * g * (rho_s - rho_f) / eta
     tau = m / (6 * np.pi * eta * r)
 
@@ -72,73 +71,128 @@ else:
 
     # --- Інтерфейс лабораторного стенду ---
     st.subheader("🧪 Віртуальний стенд")
-    st.caption("Натисніть кнопку нижче, щоб скинути кульку. Слідкуйте за секундоміром у момент перетину червоних міток.")
+    st.caption("Натисніть кнопку 'Запустити кульку' всередині вікна стенду. Слідкуйте за секундоміром у момент перетину червоних міток.")
 
-    # Кнопка запуску
-    start_btn = st.button("🚀 Скинути кульку", use_container_width=True)
+    # Передаємо чисті фізичні змінні прямо в HTML/JS код за допомогою f-рядка
+    html_src = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{
+                background-color: #0e1117;
+                color: white;
+                font-family: sans-serif;
+                margin: 0;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }}
+            #stopwatch {{
+                font-size: 28px;
+                color: #FFD700;
+                font-weight: bold;
+                margin-bottom: 15px;
+                font-family: monospace;
+            }}
+            #btn {{
+                background-color: #ff4b4b;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-size: 16px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: bold;
+                margin-bottom: 20px;
+                width: 250px;
+            }}
+            #btn:hover {{
+                background-color: #ff3333;
+            }}
+            svg {{
+                background-color: #1e1e1e;
+                border-radius: 8px;
+            }}
+        </style>
+    </head>
+    <body>
 
-    # Створюємо два порожніх контейнери: один для секундоміра, другий для самої колби
-    stopwatch_placeholder = st.empty()
-    cylinder_placeholder = st.empty()
+        <div id="stopwatch">⏱️ Секундомір: 0.000 с</div>
+        <button id="btn" onclick="startSimulation()">🚀 Скинути кульку</button>
 
-    # Функція генерації надлегкої SVG-графіки колби всередині HTML-контейнера
-    def render_svg_cylinder(y_curr_m):
-        scale = 400 / H_cylinder
-        y_pixel = y_curr_m * scale
-        y_A = y_start_label * scale
-        y_B = y_end_label * scale
-        
-        # Повністю автономна HTML-сторінка для iframe
-        html_code = f"""
-        <html>
-        <body style="background-color: #0e1117; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh;">
-            <svg width="250" height="440" viewBox="0 0 250 440" xmlns="http://w3.org">
-                <!-- Рідина в циліндрі -->
-                <rect x="85" y="20" width="80" height="400" fill="rgba(0, 150, 255, 0.15)" stroke="#ffffff" stroke-width="3" rx="5" />
-                
-                <!-- Мітка А (Старт) -->
-                <line x1="65" y1="{20 + y_A}" x2="185" y2="{20 + y_A}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
-                <text x="5" y="{25 + y_A}" fill="#ff3333" font-size="14" font-family="sans-serif" font-weight="bold">Мітка А</text>
-                
-                <!-- Мітка Б (Стоп) -->
-                <line x1="65" y1="{20 + y_B}" x2="185" y2="{20 + y_B}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
-                <text x="5" y="{25 + y_B}" fill="#ff3333" font-size="14" font-family="sans-serif" font-weight="bold">Мітка Б</text>
-                
-                <!-- Кулька -->
-                <circle cx="125" y="{20 + y_pixel}" r="12" fill="#a0a0a0" stroke="#ffffff" stroke-width="2" />
-            </svg>
-        </body>
-        </html>
-        """
-        return html_code
-
-    # Початковий стан (кулька вгорі, час 0)
-    stopwatch_placeholder.markdown(f"<h2 style='text-align: center; color: #FFD700;'>⏱️ Секундомір: 0.000 с</h2>", unsafe_allow_html=True)
-    components.html(render_svg_cylinder(0.0), height=460)
-
-    # Логіка анімації при натисканні кнопки
-    if start_btn:
-        dt = 0.030 
-        current_time = 0.0
-        
-        while current_time <= t_bottom:
-            y_ball = v_term * current_time - v_term * tau * (1 - np.exp(-current_time / tau))
-            if y_ball > H_cylinder:
-                y_ball = H_cylinder
-
-            # Оновлюємо секундомір та колбу через стабільні компоненти
-            stopwatch_placeholder.markdown(f"<h2 style='text-align: center; color: #FFD700;'>⏱️ Секундомір: {current_time:.3f} с</h2>", unsafe_allow_html=True)
+        <svg width="250" height="440" viewBox="0 0 250 440" xmlns="http://w3.org">
+            <!-- Рідина в циліндрі -->
+            <rect x="85" y="20" width="80" height="400" fill="rgba(0, 150, 255, 0.15)" stroke="#ffffff" stroke-width="3" rx="5" />
             
-            with cylinder_placeholder:
-                components.html(render_svg_cylinder(y_ball), height=460)
+            <!-- Мітка А -->
+            <line x1="65" y1="{20 + (y_start_label * 400 / H_cylinder)}" x2="185" y2="{20 + (y_start_label * 400 / H_cylinder)}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
+            <text x="5" y="{25 + (y_start_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold">Мітка А</text>
             
-            time.sleep(dt)
-            current_time += dt
+            <!-- Мітка Б -->
+            <line x1="65" y1="{20 + (y_end_label * 400 / H_cylinder)}" x2="185" y2="{20 + (y_end_label * 400 / H_cylinder)}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
+            <text x="5" y="{25 + (y_end_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold">Мітка Б</text>
+            
+            <!-- Кулька -->
+            <circle id="ball" cx="125" y="20" r="12" fill="#a0a0a0" stroke="#ffffff" stroke-width="2" />
+        </svg>
 
-        # Фінальний стан — на дні
-        stopwatch_placeholder.markdown(f"<h2 style='text-align: center; color: #00FFCC;'>⏱️ Разом: {t_bottom:.3f} с</h2>", unsafe_allow_html=True)
-        with cylinder_placeholder:
-            components.html(render_svg_cylinder(H_cylinder), height=460)
+        <script>
+            // Фізичні константи передані з Python
+            const v_term = {v_term};
+            const tau = {tau};
+            const H_cylinder = {H_cylinder};
+            const t_bottom = {t_bottom};
+            const scale = 400 / H_cylinder;
+
+            let startTime = null;
+            let animationId = null;
+
+            function startSimulation() {{
+                // Скидаємо стани, якщо запуск повторний
+                cancelAnimationFrame(animationId);
+                document.getElementById('ball').setAttribute('cy', 20);
+                document.getElementById('stopwatch').innerText = "⏱️ Секундомір: 0.000 с";
+                document.getElementById('stopwatch').style.color = "#FFD700";
+                
+                startTime = performance.now();
+                animate();
+            }}
+
+            function animate() {{
+                let now = performance.now();
+                let elapsed_seconds = (now - startTime) / 1000;
+
+                if (elapsed_seconds >= t_bottom) {{
+                    elapsed_seconds = t_bottom;
+                    document.getElementById('ball').setAttribute('cy', 20 + H_cylinder * scale);
+                    document.getElementById('stopwatch').innerText = "⏱️ Разом: " + elapsed_seconds.toFixed(3) + " с";
+                    document.getElementById('stopwatch').style.color = "#00FFCC";
+                    return; // Зупиняємо анімацію на дні
+                }}
+
+                // Формула Стокса: точна координата y
+                let y_curr = v_term * elapsed_seconds - v_term * tau * (1 - Math.exp(-elapsed_seconds / tau));
+                if (y_curr > H_cylinder) y_curr = H_cylinder;
+
+                // Рухаємо кульку в SVG
+                document.getElementById('ball').setAttribute('cy', 20 + y_curr * scale);
+                
+                // Оновлюємо секундомір
+                document.getElementById('stopwatch').innerText = "⏱️ Секундомір: " + elapsed_seconds.toFixed(3) + " с";
+
+                // Запит наступного кадру (60 разів на секунду, без навантаження на сервер)
+                animationId = requestAnimationFrame(animate);
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    
+    # Виводимо весь автономний кабінет однією стабільною командою
+    components.html(html_src, height=560)
 
     # Таблиця констант
     st.write("---")
