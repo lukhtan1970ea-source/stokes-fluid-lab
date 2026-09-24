@@ -131,7 +131,22 @@ else:
     <body>
 
         <div id="stopwatch">⏱️ Секундомір: 0.000 с</div>
-        <button id="btn" onclick="startSimulation()">🚀 Скинути кульку</button>
+
+<div class="controls" style="display: flex; gap: 10px; margin-bottom: 20px;">
+    <button id="btn" onclick="startSimulation()" style="background-color: #ff4b4b; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 180px;">🚀 Скинути кульку</button>
+    <button id="btn-lapA" onclick="recordLap('A')" disabled style="background-color: #4CAF50; color: white; border: none; padding: 10px 15px; font-size: 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 130px;">⏱️ Мітка А</button>
+    <button id="btn-lapB" onclick="recordLap('B')" disabled style="background-color: #4CAF50; color: white; border: none; padding: 10px 15px; font-size: 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 130px;">⏱️ Мітка Б</button>
+</div>
+
+<!-- Панель ручної фіксації результатів студентом -->
+<div id="results-panel" style="margin-top: 15px; font-size: 16px; background-color: #1e2530; padding: 10px 20px; border-radius: 6px; width: 320px; border: 1px solid #343b47;">
+    <div style="display: flex; justify-content: space-between; margin: 5px 0;"><span>Зафіксовано t<sub>А</sub>:</span> <span id="valA" style="color: #00FFCC; font-family: monospace; font-weight: bold;">--.--- с</span></div>
+    <div style="display: flex; justify-content: space-between; margin: 5px 0;"><span>Зафіксовано t<sub>Б</sub>:</span> <span id="valB" style="color: #00FFCC; font-family: monospace; font-weight: bold;">--.--- с</span></div>
+    <div style="display: flex; justify-content: space-between; margin: 5px 0; border-top: 1px dashed #555; margin-top: 8px; padding-top: 5px; font-weight: bold;">
+        <span>Різниця (Δt):</span> <span id="valDiff" style="color: #FFD700; font-family: monospace; font-weight: bold;">--.--- с</span>
+    </div>
+</div>
+
 
         <svg width="250" height="440" viewBox="0 0 250 440" xmlns="http://w3.org">
             <!-- Рідина в циліндрі (задній план) -->
