@@ -60,13 +60,14 @@ else:
     v_term = (2 / 9) * (r**2) * g * (rho_s - rho_f) / eta
     tau = m / (6 * np.pi * eta * r)
 
-    # Динамічний радіус кульки на екрані (в пікселях)
+    # Динамічний радіус кульки на екрані (в пікселях) підв'язуємо до повзунка
+    # Робимо базовий радіус помітним, наприклад: 5 мм = 15 пікселів, 1 мм = 5 пікселів
     r_pixels = float(r_mm * 3.0)
     
-    # Визначаємо фізичну точку зупинки центру мас кульки
+    # Визначаємо фізичну точку зупинки центру мас кульки з урахуванням її поточного радіуса на екрані
     scale_factor = 400 / H_cylinder
     r_screen_m = r_pixels / scale_factor
-    H_stop_m = H_cylinder - r_screen_m
+    H_stop_m = H_cylinder - r_screen_m  # точка зупинки центру мас кульки
 
     # Функція розрахунку часу падіння до потрібної позначки
     def get_time_for_distance(y_target, v_t, t_rel):
@@ -75,13 +76,14 @@ else:
         idx = np.searchsorted(y_arr, y_target)
         return t_arr[idx] if idx < len(t_arr) else 180.0
 
+    # Точний час падіння до торкання дна нижнім краєм (динамічно залежить від радіуса)
     t_bottom = get_time_for_distance(H_stop_m, v_term, tau)
 
     # --- Інтерфейс лабораторного стенду ---
     st.subheader("🧪 Віртуальний стенд")
-    st.caption("Керуйте експериментом за допомогою кнопок нижче. Фіксуйте час проходження міток А та Б вручну.")
+    st.caption("Натисніть кнопку 'Запустити кульку' всередині вікна стенду. Слідкуйте за секундоміром у момент перетину червоних міток.")
 
-    # Збираємо чистий HTML без синтаксичних конфліктів всередині f-строки
+    # Передаємо змінні в HTML/JS код за допомогою f-рядка
     html_src = f"""
     <!DOCTYPE html>
     <html>
@@ -105,92 +107,50 @@ else:
                 margin-bottom: 15px;
                 font-family: monospace;
             }}
-            .controls {{
-                display: flex;
-                gap: 10px;
-                margin-bottom: 20px;
-            }}
-            button {{
+            #btn {{
+                background-color: #ff4b4b;
                 color: white;
                 border: none;
-                padding: 10px 15px;
-                font-size: 15px;
+                padding: 10px 20px;
+                font-size: 16px;
                 border-radius: 5px;
                 cursor: pointer;
                 font-weight: bold;
+                margin-bottom: 20px;
+                width: 250px;
             }}
-            #btn-start {{ background-color: #ff4b4b; width: 180px; }}
-            #btn-start:hover {{ background-color: #ff3333; }}
-            .btn-lap {{ background-color: #4CAF50; width: 130px; }}
-            .btn-lap:hover {{ background-color: #45a049; }}
-            .btn-lap:disabled {{ background-color: #555; cursor: not-allowed; opacity: 0.6; }}
-            
-            #results-panel {{
-                margin-top: 15px;
-                font-size: 16px;
-                background-color: #1e2530;
-                padding: 10px 20px;
-                border-radius: 6px;
-                width: 320px;
-                border: 1px solid #343b47;
+            #btn:hover {{
+                background-color: #ff3333;
             }}
-            .res-row {{
-                display: flex;
-                justify-content: space-between;
-                margin: 5px 0;
-            }}
-            .res-val {{ color: #00FFCC; font-family: monospace; font-weight: bold; }}
-            
             svg {{
                 background-color: #1e1e1e;
                 border-radius: 8px;
-                margin-top: 5px;
             }}
         </style>
     </head>
     <body>
 
         <div id="stopwatch">⏱️ Секундомір: 0.000 с</div>
-        
-        <div class="controls">
-            <button id="btn-start" onclick="startSimulation()">🚀 Скинути кульку</button>
-            <button id="btn-lapA" class="btn-lap" onclick="recordLap('A')" disabled>⏱️ Мітка А</button>
-            <button id="btn-lapB" class="btn-lap" onclick="recordLap('B')" disabled>⏱️ Мітка Б</button>
-        </div>
+        <button id="btn" onclick="startSimulation()">🚀 Скинути кульку</button>
 
         <svg width="250" height="440" viewBox="0 0 250 440" xmlns="http://w3.org">
-            <defs>
-                <radialGradient id="ballGradient" cx="35%" cy="35%" r="65%">
-                    <stop offset="0%" stop-color="#ffffff" />
-                    <stop offset="40%" stop-color="#a6a6a6" />
-                    <stop offset="100%" stop-color="#404040" />
-                </radialGradient>
-            </defs>
-
             <!-- Рідина в циліндрі (задній план) -->
             <rect x="85" y="20" width="80" height="400" fill="rgba(0, 150, 255, 0.15)" stroke="#ffffff" stroke-width="3" rx="5" />
             
-            <!-- Кулька (середній план) -->
-            <circle id="ball" cx="125" y="20" r="{r_pixels}" fill="url(#ballGradient)" stroke="#222" stroke-width="1" />
+            <!-- Кулька (середній план, малюється під мітками) -->
+            <circle id="ball" cx="125" y="20" r="{r_pixels}" fill="#a0a0a0" stroke="#ffffff" stroke-width="2" />
             
-            <!-- Мітка А (передній план) -->
+            <!-- Мітка А (передній план - перенесено вниз, перекриває кульку) -->
             <line x1="65" y1="{20 + (y_start_label * 400 / H_cylinder)}" x2="185" y2="{20 + (y_start_label * 400 / H_cylinder)}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
             <text x="5" y="{25 + (y_start_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold" font-family="sans-serif">Мітка А</text>
             
-            <!-- Мітка Б (передній план) -->
+            <!-- Мітка Б (передній план - перенесено вниз, перекриває кульку) -->
             <line x1="65" y1="{20 + (y_end_label * 400 / H_cylinder)}" x2="185" y2="{20 + (y_end_label * 400 / H_cylinder)}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
             <text x="5" y="{25 + (y_end_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold" font-family="sans-serif">Мітка Б</text>
         </svg>
 
-        <div id="results-panel">
-            <div class="res-row"><span>Зафіксовано t<sub>А</sub>:</span> <span id="valA" class="res-val">--.--- с</span></div>
-            <div class="res-row"><span>Зафіксовано t<sub>Б</sub>:</span> <span id="valB" class="res-val">--.--- с</span></div>
-            <div class="res-row" style="border-top: 1px dashed #555; margin-top: 8px; padding-top: 5px; font-weight: bold;">
-                <span>Різниця (Δt):</span> <span id="valDiff" class="res-val" style="color: #FFD700;">--.--- с</span>
-            </div>
-        </div>
-
         <script>
+            // Фізичні константи передані з Python
             const v_term = {v_term};
             const tau = {tau};
             const H_cylinder = {H_cylinder};
@@ -200,10 +160,6 @@ else:
 
             let startTime = null;
             let animationId = null;
-            let currentElapsed = 0;
-            
-            let timeA = null;
-            let timeB = null;
 
             function startSimulation() {{
                 cancelAnimationFrame(animationId);
@@ -211,39 +167,47 @@ else:
                 document.getElementById('stopwatch').innerText = "⏱️ Секундомір: 0.000 с";
                 document.getElementById('stopwatch').style.color = "#FFD700";
                 
-                timeA = null;
-                timeB = null;
-                document.getElementById('valA').innerText = "--.--- с";
-                document.getElementById('valB').innerText = "--.--- с";
-                document.getElementById('valDiff').innerText = "--.--- с";
-                
-                document.getElementById('btn-lapA').disabled = false;
-                document.getElementById('btn-lapB').disabled = false;
-                
                 startTime = performance.now();
                 animate();
             }}
 
-            function recordLap(label) {{
-                if (label === 'A') {{
-                    timeA = currentElapsed;
-                    document.getElementById('valA').innerText = timeA.toFixed(3) + " с";
-                    document.getElementById('btn-lapA').disabled = true;
-                }} else if (label === 'B') {{
-                    timeB = currentElapsed;
-                    document.getElementById('valB').innerText = timeB.toFixed(3) + " с";
-                    document.getElementById('btn-lapB').disabled = true;
-                }}
-                
-                if (timeA !== null && timeB !== null) {{
-                    let diff = timeB - timeA;
-                    document.getElementById('valDiff').innerText = diff.toFixed(3) + " с";
-                }}
-            }}
-
             function animate() {{
                 let now = performance.now();
-                currentElapsed = (now - startTime) / 1000;
+                let elapsed_seconds = (now - startTime) / 1000;
 
-                if (currentElapsed >= t_bottom) {{
-currentElapsed = t_bottom;document.getElementById('ball').setAttribute('cy', 20 + H_stop_m * scale);document.getElementById('stopwatch').innerText = "⏱️ Разом: " + currentElapsed.toFixed(3) + " с";document.getElementById('stopwatch').style.color = "#00FFCC";document.getElementById('btn-lapA').disabled = true;document.getElementById('btn-lapB').disabled = true;return;}}let y_val = v_term * currentElapsed - v_term * tau * (1 - Math.exp(-currentElapsed / tau));if (y_val > H_stop_m) y_val = H_stop_m;document.getElementById('ball').setAttribute('cy', 20 + y_val * scale);document.getElementById('stopwatch').innerText = "⏱️ Секундомір: " + currentElapsed.toFixed(3) + " с";animationId = requestAnimationFrame(animate);}}"""components.html(html_src, height=650)# Таблиця константst.write("---")st.subheader("📋 Довідкові дані лабораторної установки")df_info = pd.DataFrame({"Параметр (Одиниці вимірювання)": ["Густина рідини (кг/м³)","Густина матеріалу кольки (кг/м³)","Радіус кульки (мм)","Відстань між мітками А та Б (м)",],"Значення": [f"{rho_f}", f"{rho_s}", f"{r_mm}", f"{L_distance:.2f}"]})st.table(df_info)
+                if (elapsed_seconds >= t_bottom) {{
+                    elapsed_seconds = t_bottom;
+                    document.getElementById('ball').setAttribute('cy', 20 + H_stop_m * scale);
+                    document.getElementById('stopwatch').innerText = "⏱️ Разом: " + elapsed_seconds.toFixed(3) + " с";
+                    document.getElementById('stopwatch').style.color = "#00FFCC";
+                    return;
+                }}
+
+                let y_curr = v_term * elapsed_seconds - v_term * tau * (1 - Math.exp(-elapsed_seconds / tau));
+                if (y_curr > H_stop_m) y_curr = H_stop_m;
+
+                document.getElementById('ball').setAttribute('cy', 20 + y_curr * scale);
+                document.getElementById('stopwatch').innerText = "⏱️ Секундомір: " + elapsed_seconds.toFixed(3) + " с";
+
+                animationId = requestAnimationFrame(animate);
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    
+    components.html(html_src, height=560)
+
+    # Таблиця констант
+    st.write("---")
+    st.subheader("📋 Довідкові дані лабораторної установки")
+    df_info = pd.DataFrame({
+        "Параметр (Одиниці вимірювання)": [
+            "Густина рідини (кг/м³)",
+            "Густина матеріалу кульки (кг/м³)",
+            "Радіус кульки (мм)",
+            "Відстань між мітками А та Б (м)",
+        ],
+        "Значення": [f"{rho_f}", f"{rho_s}", f"{r_mm}", f"{L_distance:.2f}"]
+    })
+    st.table(df_info)
