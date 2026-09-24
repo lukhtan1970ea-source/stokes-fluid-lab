@@ -142,8 +142,7 @@ else:
 <div id="results-panel" style="margin-top: 15px; font-size: 16px; background-color: #1e2530; padding: 10px 20px; border-radius: 6px; width: 320px; border: 1px solid #343b47;">
     <div style="display: flex; justify-content: space-between; margin: 5px 0;"><span>Зафіксовано t<sub>А</sub>:</span> <span id="valA" style="color: #00FFCC; font-family: monospace; font-weight: bold;">--.--- с</span></div>
     <div style="display: flex; justify-content: space-between; margin: 5px 0;"><span>Зафіксовано t<sub>Б</sub>:</span> <span id="valB" style="color: #00FFCC; font-family: monospace; font-weight: bold;">--.--- с</span></div>
-    <div style="display: flex; justify-content: space-between; margin: 5px 0; border-top: 1px dashed #555; margin-top: 8px; padding-top: 5px; font-weight: bold;">
-        <span>Різниця (Δt):</span> <span id="valDiff" style="color: #FFD700; font-family: monospace; font-weight: bold;">--.--- с</span>
+            <span>Різниця (Δt):</span> <span id="valDiff" style="color: #FFD700; font-family: monospace; font-weight: bold;">--.--- с</span>
     </div>
 </div>
 
@@ -212,11 +211,7 @@ else:
             document.getElementById('btn-lapB').disabled = true;
         }}
         
-        // Расчет разницы времени между метками
-        if (timeA !== null && timeB !== null) {{
-            let diff = timeB - timeA;
-            document.getElementById('valDiff').innerText = diff.toFixed(3) + " с";
-        }}
+        
     }}
 
     function animate() {{
