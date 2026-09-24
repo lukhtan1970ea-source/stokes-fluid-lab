@@ -2,6 +2,7 @@ import time
 import numpy as np
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Налаштування сторінки
 st.set_page_config(
@@ -80,65 +81,64 @@ else:
     stopwatch_placeholder = st.empty()
     cylinder_placeholder = st.empty()
 
-    # Функція генерації надлегкої SVG-графіки колби
-    def render_svg_cylinder(y_curr_m, time_s):
-        # Переводимо метри в пікселі для малювання (висота колби 400px)
+    # Функція генерації надлегкої SVG-графіки колби всередині HTML-контейнера
+    def render_svg_cylinder(y_curr_m):
         scale = 400 / H_cylinder
         y_pixel = y_curr_m * scale
         y_A = y_start_label * scale
         y_B = y_end_label * scale
         
-        svg_code = f"""
-        <div style="display: flex; justify-content: center; background-color: #1e1e1e; padding: 20px; border-radius: 10px;">
-            <svg width="200" height="440" viewBox="0 0 200 440" xmlns="http://w3.org">
+        # Повністю автономна HTML-сторінка для iframe
+        html_code = f"""
+        <html>
+        <body style="background-color: #0e1117; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh;">
+            <svg width="250" height="440" viewBox="0 0 250 440" xmlns="http://w3.org">
                 <!-- Рідина в циліндрі -->
-                <rect x="60" y="20" width="80" height="400" fill="rgba(0, 150, 255, 0.15)" stroke="#ffffff" stroke-width="3" rx="5" />
+                <rect x="85" y="20" width="80" height="400" fill="rgba(0, 150, 255, 0.15)" stroke="#ffffff" stroke-width="3" rx="5" />
                 
                 <!-- Мітка А (Старт) -->
-                <line x1="45" y1="{20 + y_A}" x2="155" y2="{20 + y_A}" stroke="#ff3333" stroke-width="2" stroke-dasharray="4" />
-                <text x="5" y="{25 + y_A}" fill="#ff3333" font-size="12" font-family="sans-serif">Мітка А</text>
+                <line x1="65" y1="{20 + y_A}" x2="185" y2="{20 + y_A}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
+                <text x="5" y="{25 + y_A}" fill="#ff3333" font-size="14" font-family="sans-serif" font-weight="bold">Мітка А</text>
                 
                 <!-- Мітка Б (Стоп) -->
-                <line x1="45" y1="{20 + y_B}" x2="155" y2="{20 + y_B}" stroke="#ff3333" stroke-width="2" stroke-dasharray="4" />
-                <text x="5" y="{25 + y_B}" fill="#ff3333" font-size="12" font-family="sans-serif">Мітка Б</text>
+                <line x1="65" y1="{20 + y_B}" x2="185" y2="{20 + y_B}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
+                <text x="5" y="{25 + y_B}" fill="#ff3333" font-size="14" font-family="sans-serif" font-weight="bold">Мітка Б</text>
                 
                 <!-- Кулька -->
-                <circle cx="100" y="{20 + y_pixel}" r="10" fill="#a0a0a0" stroke="#ffffff" stroke-width="1.5" />
+                <circle cx="125" y="{20 + y_pixel}" r="12" fill="#a0a0a0" stroke="#ffffff" stroke-width="2" />
             </svg>
-        </div>
+        </body>
+        </html>
         """
-        return svg_code
+        return html_code
 
     # Початковий стан (кулька вгорі, час 0)
     stopwatch_placeholder.markdown(f"<h2 style='text-align: center; color: #FFD700;'>⏱️ Секундомір: 0.000 с</h2>", unsafe_allow_html=True)
-    cylinder_placeholder.html(render_svg_cylinder(0.0, 0.0))
+    components.html(render_svg_cylinder(0.0), height=460)
 
     # Логіка анімації при натисканні кнопки
     if start_btn:
-        # Розраховуємо параметри реального часу для плавної промальовки
-        # Робимо крок у 0.03 секунди (приблизно 30 кадрів на секунду)
         dt = 0.030 
         current_time = 0.0
         
-        t_start = time.time()
-        
         while current_time <= t_bottom:
-            # Обчислюємо точну фізичну координату кульки для цієї мікросекунди
             y_ball = v_term * current_time - v_term * tau * (1 - np.exp(-current_time / tau))
             if y_ball > H_cylinder:
                 y_ball = H_cylinder
 
-            # Миттєво оновлюємо текст секундоміра та графіку без перемальовки сторінки
+            # Оновлюємо секундомір та колбу через стабільні компоненти
             stopwatch_placeholder.markdown(f"<h2 style='text-align: center; color: #FFD700;'>⏱️ Секундомір: {current_time:.3f} с</h2>", unsafe_allow_html=True)
-            cylinder_placeholder.html(render_svg_cylinder(y_ball, current_time))
             
-            # Контроль кроку за часом процесора
+            with cylinder_placeholder:
+                components.html(render_svg_cylinder(y_ball), height=460)
+            
             time.sleep(dt)
             current_time += dt
 
-        # Фінальний акорд — фіксуємо кульку точно на дні
+        # Фінальний стан — на дні
         stopwatch_placeholder.markdown(f"<h2 style='text-align: center; color: #00FFCC;'>⏱️ Разом: {t_bottom:.3f} с</h2>", unsafe_allow_html=True)
-        cylinder_placeholder.html(render_svg_cylinder(H_cylinder, t_bottom))
+        with cylinder_placeholder:
+            components.html(render_svg_cylinder(H_cylinder), height=460)
 
     # Таблиця констант
     st.write("---")
