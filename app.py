@@ -60,20 +60,28 @@ else:
     v_term = (2 / 9) * (r**2) * g * (rho_s - rho_f) / eta
     tau = m / (6 * np.pi * eta * r)
 
-    # Функція розрахунку часу падіння до дна
+    # Враховуємо радіус кульки для зупинки: фізичний шлях до торкання дна нижнім краєм
+    # Радіус кульки в пікселях = 12. Висота циліндра в пікселях = 400.
+    # Масштаб: scale = 400 / H_cylinder. Радіус в метрах на екрані: r_screen_m = 12 / scale
+    scale_factor = 400 / H_cylinder
+    r_screen_m = 12 / scale_factor
+    H_stop_m = H_cylinder - r_screen_m  # точка зупинки центру мас кульки
+
+    # Функція розрахунку часу падіння до потрібної позначки
     def get_time_for_distance(y_target, v_t, t_rel):
         t_arr = np.linspace(0, 180.0, 50000)
         y_arr = v_t * t_arr - v_t * t_rel * (1 - np.exp(-t_arr / t_rel))
         idx = np.searchsorted(y_arr, y_target)
         return t_arr[idx] if idx < len(t_arr) else 180.0
 
-    t_bottom = get_time_for_distance(H_cylinder, v_term, tau)
+    # Точний час падіння саме до торкання дна нижнім краєм
+    t_bottom = get_time_for_distance(H_stop_m, v_term, tau)
 
     # --- Інтерфейс лабораторного стенду ---
     st.subheader("🧪 Віртуальний стенд")
     st.caption("Натисніть кнопку 'Запустити кульку' всередині вікна стенду. Слідкуйте за секундоміром у момент перетину червоних міток.")
 
-    # Передаємо чисті фізичні змінні прямо в HTML/JS код за допомогою f-рядка
+    # Передаємо змінні в HTML/JS код за допомогою f-рядка
     html_src = f"""
     <!DOCTYPE html>
     <html>
@@ -135,7 +143,7 @@ else:
             <line x1="65" y1="{20 + (y_end_label * 400 / H_cylinder)}" x2="185" y2="{20 + (y_end_label * 400 / H_cylinder)}" stroke="#ff3333" stroke-width="2.5" stroke-dasharray="5" />
             <text x="5" y="{25 + (y_end_label * 400 / H_cylinder)}" fill="#ff3333" font-size="14" font-weight="bold">Мітка Б</text>
             
-            <!-- Кулька -->
+            <!-- Кулька (радіус 12 пікселів) -->
             <circle id="ball" cx="125" y="20" r="12" fill="#a0a0a0" stroke="#ffffff" stroke-width="2" />
         </svg>
 
@@ -144,6 +152,7 @@ else:
             const v_term = {v_term};
             const tau = {tau};
             const H_cylinder = {H_cylinder};
+            const H_stop_m = {H_stop_m};
             const t_bottom = {t_bottom};
             const scale = 400 / H_cylinder;
 
@@ -151,7 +160,6 @@ else:
             let animationId = null;
 
             function startSimulation() {{
-                // Скидаємо стани, якщо запуск повторний
                 cancelAnimationFrame(animationId);
                 document.getElementById('ball').setAttribute('cy', 20);
                 document.getElementById('stopwatch').innerText = "⏱️ Секундомір: 0.000 с";
@@ -167,23 +175,23 @@ else:
 
                 if (elapsed_seconds >= t_bottom) {{
                     elapsed_seconds = t_bottom;
-                    document.getElementById('ball').setAttribute('cy', 20 + H_cylinder * scale);
+                    // Фіксуємо центр кульки точно в точці зупинки (420 мінус радіус 12 = 408)
+                    document.getElementById('ball').setAttribute('cy', 20 + H_stop_m * scale);
                     document.getElementById('stopwatch').innerText = "⏱️ Разом: " + elapsed_seconds.toFixed(3) + " с";
                     document.getElementById('stopwatch').style.color = "#00FFCC";
-                    return; // Зупиняємо анімацію на дні
+                    return;
                 }}
 
-                // Формула Стокса: точна координата y
+                // Розрахунок поточної координати центру кульки
                 let y_curr = v_term * elapsed_seconds - v_term * tau * (1 - Math.exp(-elapsed_seconds / tau));
-                if (y_curr > H_cylinder) y_curr = H_cylinder;
-
-                // Рухаємо кульку в SVG
-                document.getElementById('ball').setAttribute('cy', 20 + y_curr * scale);
                 
-                // Оновлюємо секундомір
+                // Якщо центр мас опустився нижче точки торкання дна
+                if (y_curr > H_stop_m) y_curr = H_stop_m;
+
+                // Оновлюємо позицію та секундомір
+                document.getElementById('ball').setAttribute('cy', 20 + y_curr * scale);
                 document.getElementById('stopwatch').innerText = "⏱️ Секундомір: " + elapsed_seconds.toFixed(3) + " с";
 
-                // Запит наступного кадру (60 разів на секунду, без навантаження на сервер)
                 animationId = requestAnimationFrame(animate);
             }}
         </script>
@@ -191,7 +199,6 @@ else:
     </html>
     """
     
-    # Виводимо весь автономний кабінет однією стабільною командою
     components.html(html_src, height=560)
 
     # Таблиця констант
