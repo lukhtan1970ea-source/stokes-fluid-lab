@@ -165,48 +165,88 @@ else:
         </svg>
 
         <script>
-            // Фізичні константи передані з Python
-            const v_term = {v_term};
-            const tau = {tau};
-            const H_cylinder = {H_cylinder};
-            const H_stop_m = {H_stop_m};
-            const t_bottom = {t_bottom};
-            const scale = 400 / H_cylinder;
+    // Физические константы, передаваемые из Python
+    const v_term = {v_term};
+    const tau = {tau};
+    const H_cylinder = {H_cylinder};
+    const H_stop_m = {H_stop_m};
+    const t_bottom = {t_bottom};
+    const scale = 400 / H_cylinder;
 
-            let startTime = null;
-            let animationId = null;
+    let startTime = null;
+    let animationId = null;
+    let currentElapsed = 0; // Общая переменная для фиксации времени кнопками
+    
+    let timeA = null;
+    let timeB = null;
 
-            function startSimulation() {{
-                cancelAnimationFrame(animationId);
-                document.getElementById('ball').setAttribute('cy', 20);
-                document.getElementById('stopwatch').innerText = "⏱️ Секундомір: 0.000 с";
-                document.getElementById('stopwatch').style.color = "#FFD700";
-                
-                startTime = performance.now();
-                animate();
-            }}
+    function startSimulation() {{
+        cancelAnimationFrame(animationId);
+        document.getElementById('ball').setAttribute('cy', 20);
+        document.getElementById('stopwatch').innerText = "⏱️ Секундомір: 0.000 с";
+        document.getElementById('stopwatch').style.color = "#FFD700";
+        
+        // Сброс результатов на панели
+        timeA = null;
+        timeB = null;
+        document.getElementById('valA').innerText = "--.--- с";
+        document.getElementById('valB').innerText = "--.--- с";
+        document.getElementById('valDiff').innerText = "--.--- с";
+        
+        // Включаем зеленые кнопки меток
+        document.getElementById('btn-lapA').disabled = false;
+        document.getElementById('btn-lapB').disabled = false;
+        
+        startTime = performance.now();
+        animate();
+    }}
 
-            function animate() {{
-                let now = performance.now();
-                let elapsed_seconds = (now - startTime) / 1000;
+    function recordLap(label) {{
+        if (label === 'A') {{
+            timeA = currentElapsed;
+            document.getElementById('valA').innerText = timeA.toFixed(3) + " с";
+            document.getElementById('btn-lapA').disabled = true;
+        }} else if (label === 'B') {{
+            timeB = currentElapsed;
+            document.getElementById('valB').innerText = timeB.toFixed(3) + " с";
+            document.getElementById('btn-lapB').disabled = true;
+        }}
+        
+        // Расчет разницы времени между метками
+        if (timeA !== null && timeB !== null) {{
+            let diff = timeB - timeA;
+            document.getElementById('valDiff').innerText = diff.toFixed(3) + " с";
+        }}
+    }}
 
-                if (elapsed_seconds >= t_bottom) {{
-                    elapsed_seconds = t_bottom;
-                    document.getElementById('ball').setAttribute('cy', 20 + H_stop_m * scale);
-                    document.getElementById('stopwatch').innerText = "⏱️ Разом: " + elapsed_seconds.toFixed(3) + " с";
-                    document.getElementById('stopwatch').style.color = "#00FFCC";
-                    return;
-                }}
+    function animate() {{
+        let now = performance.now();
+        currentElapsed = (now - startTime) / 1000; // Фиксируем точное время
 
-                let y_curr = v_term * elapsed_seconds - v_term * tau * (1 - Math.exp(-elapsed_seconds / tau));
-                if (y_curr > H_stop_m) y_curr = H_stop_m;
+        if (currentElapsed >= t_bottom) {{
+            currentElapsed = t_bottom;
+            document.getElementById('ball').setAttribute('cy', 20 + H_stop_m * scale);
+            document.getElementById('stopwatch').innerText = "⏱️ Разом: " + currentElapsed.toFixed(3) + " с";
+            document.getElementById('stopwatch').style.color = "#00FFCC";
+            
+            // Выключаем кнопки, если шарик уже упал
+            document.getElementById('btn-lapA').disabled = true;
+            document.getElementById('btn-lapB').disabled = true;
+            return;
+        }}
 
-                document.getElementById('ball').setAttribute('cy', 20 + y_curr * scale);
-                document.getElementById('stopwatch').innerText = "⏱️ Секундомір: " + elapsed_seconds.toFixed(3) + " с";
+        // Физический расчет координаты центра шарика
+        let y_curr = v_term * currentElapsed - v_term * tau * (1 - Math.exp(-currentElapsed / tau));
+        if (y_curr > H_stop_m) y_curr = H_stop_m;
 
-                animationId = requestAnimationFrame(animate);
-            }}
-        </script>
+        // Двигаем шарик и обновляем секундомер
+        document.getElementById('ball').setAttribute('cy', 20 + y_curr * scale);
+        document.getElementById('stopwatch').innerText = "⏱️ Секундомір: " + currentElapsed.toFixed(3) + " с";
+
+        animationId = requestAnimationFrame(animate);
+    }}
+</script>
+
     </body>
     </html>
     """
