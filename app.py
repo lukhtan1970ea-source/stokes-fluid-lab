@@ -176,15 +176,51 @@ else:
             let startTime = null;
             let animationId = null;
 
-            function startSimulation() {{
-                cancelAnimationFrame(animationId);
-                document.getElementById('ball').setAttribute('cy', 20);
-                document.getElementById('stopwatch').innerText = "⏱️ Секундомір: 0.000 с";
-                document.getElementById('stopwatch').style.color = "#FFD700";
-                
-                startTime = performance.now();
-                animate();
-            }}
+            // Добавим три переменные в самое начало скрипта перед функциями:
+let currentElapsed = 0;
+let timeA = null;
+let timeB = null;
+
+function startSimulation() {
+    cancelAnimationFrame(animationId);
+    document.getElementById('ball').setAttribute('cy', 20);
+    document.getElementById('stopwatch').innerText = "⏱️ Секундомір: 0.000 с";
+    document.getElementById('stopwatch').style.color = "#FFD700";
+    
+    // Очищаем старые цифры в табличке
+    timeA = null;
+    timeB = null;
+    document.getElementById('valA').innerText = "--.--- с";
+    document.getElementById('valB').innerText = "--.--- с";
+    document.getElementById('valDiff').innerText = "--.--- с";
+    
+    // Включаем зеленые кнопки меток для нового замера
+    document.getElementById('btn-lapA').disabled = false;
+    document.getElementById('btn-lapB').disabled = false;
+    
+    startTime = performance.now();
+    animate();
+}
+
+// Добавляем абсолютно новую функцию для обработки кликов по кнопкам меток
+function recordLap(label) {
+    if (label === 'A') {
+        timeA = currentElapsed;
+        document.getElementById('valA').innerText = timeA.toFixed(3) + " с";
+        document.getElementById('btn-lapA').disabled = true; // гасим кнопку А после клика
+    } else if (label === 'B') {
+        timeB = currentElapsed;
+        document.getElementById('valB').innerText = timeB.toFixed(3) + " с";
+        document.getElementById('btn-lapB').disabled = true; // гасим кнопку Б после клика
+    }
+    
+    // Если студент нажал обе кнопки, магия — считаем разницу
+    if (timeA !== null && timeB !== null) {
+        let diff = timeB - timeA;
+        document.getElementById('valDiff').innerText = diff.toFixed(3) + " с";
+    }
+}
+
 
             function animate() {{
                 let now = performance.now();
